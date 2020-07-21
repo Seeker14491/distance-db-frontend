@@ -4,7 +4,7 @@
     "main": "index.js",
     "license": "MIT",
     "scripts": {
-        "build": "cross-env yarn parcel build ./src/index.html --public-url $PUBLIC_URL"
+        "build": "cross-env-shell yarn parcel build ./src/index.html --public-url $PUBLIC_URL"
     },
     "dependencies": {
         "ag-grid-community": "^21.2.2",
