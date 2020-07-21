@@ -1,0 +1,49 @@
+@font-face {
+    font-family: 'gudearegular';
+    src: url('../assets/gudea-regular-webfont.woff2') format('woff2'),
+        url('../assets/gudea-regular-webfont.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+}
+
+html,
+body {
+    color: white;
+    background-color: #222;
+}
+
+#wrapper {
+    display: grid;
+    grid-template-rows: auto 1fr 4rem;
+    grid-template-columns: 1fr 1fr;
+    grid-gap: 5px;
+    height: 100vh;
+    padding-top: 5px;
+}
+
+#header {
+    grid-column: 1/3;
+    display: flex;
+    justify-content: space-between;
+}
+
+#title {
+    font-family: 'gudearegular', sans-serif;
+    margin: 2px;
+}
+
+#editor-and-grid {
+    display: flex;
+    grid-column: 1/3;
+}
+
+#log {
+    font-family: monospace;
+    color: orangered;
+    grid-column: 1/3;
+}
+
+a,
+a:hover {
+    color: dodgerblue;
+}
