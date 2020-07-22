@@ -7,7 +7,6 @@ import 'regenerator-runtime/runtime';
 import Split from 'split.js';
 import DBGrid from './DBGrid';
 import setUpEditor from './editor';
-import config from '../app-config';
 
 const SuccessResponse = t.type({
     success: t.type({
