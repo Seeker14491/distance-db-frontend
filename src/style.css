@@ -47,3 +47,7 @@ a,
 a:hover {
     color: dodgerblue;
 }
+
+#editor > .CodeMirror {
+  height: 100%;
+}
