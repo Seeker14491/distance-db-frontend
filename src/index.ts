@@ -70,7 +70,7 @@ let grid: DBGrid | null = null;
 })();
 
 async function queryDB(query: string): Promise<void> {
-    const rawResponse = await fetch(`${process.env.SERVER_URL}?query=${encodeURI(query)}`);
+    const rawResponse = await fetch(`${process.env.SERVER_URL}?query=${encodeURIComponent(query)}`);
     const data = await rawResponse.json();
 
     const response = unwrapValidation(ApiResponse.decode(data));
