@@ -1,5 +1,4 @@
-/.cache
-/.idea
-/.vscode
-/dist
-/node_modules
+app/node_modules
+app/dist
+server/.env
+server/target

@@ -1,0 +1,4 @@
+*
+!server/src/
+!server/Cargo.lock
+!server/Cargo.toml
