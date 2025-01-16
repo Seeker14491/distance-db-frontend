@@ -5,17 +5,17 @@ authors = ["Brian Bowman <seeker14491@gmail.com>"]
 edition = "2021"
 
 [dependencies]
-actix-cors = "0.6"
+actix-cors = "0.7"
 actix-rt = "2"
 actix-web = "4"
 anyhow = "1"
-bb8-postgres = "0.8"
+bb8-postgres = "0.9"
 chrono = "0.4"
-color-backtrace = "0.5"
-derive_more = "0.99"
+color-backtrace = "0.6"
+derive_more = { version = "1", features = ["display"] }
 dotenv = "0.15"
 futures = "0.3"
 indoc = "2"
-itertools = "0.10"
+itertools = "0.14"
 serde = { version = "1", features = ["derive"] }
 tokio-postgres = { version = "0.7", features = ["with-chrono-0_4"] }

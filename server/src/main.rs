@@ -94,7 +94,7 @@ fn query(
         let last_updated = {
             let rows = conn.query("SELECT last_updated FROM metadata", &[]).await?;
 
-            match rows.get(0) {
+            match rows.first() {
                 Some(row) => row.get::<_, DateTime<Utc>>(0).to_rfc3339(),
                 None => {
                     return Ok(HttpResponse::ServiceUnavailable().finish());
