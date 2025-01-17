@@ -7,13 +7,10 @@
 
 use actix_cors::Cors;
 use actix_web::{middleware, web, App, HttpResponse, HttpServer, ResponseError};
-use anyhow::{format_err, Context, Error};
+use anyhow::{Context, Error};
 use bb8_postgres::{bb8, PostgresConnectionManager};
 use chrono::{DateTime, Utc};
 use derive_more::Display;
-use futures::prelude::*;
-use indoc::indoc;
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::env;
 use tokio_postgres::{SimpleQueryMessage, SimpleQueryRow};
@@ -65,8 +62,7 @@ async fn main() -> Result<(), Error> {
             .route("/", web::get().to(query))
             .wrap(Cors::permissive())
     })
-    .bind(format!("0.0.0.0:{}", port))
-    .unwrap()
+    .bind(format!("0.0.0.0:{}", port))?
     .run();
 
     println!("Listening on port {}", port);
@@ -85,110 +81,53 @@ async fn establish_database_connection(database_url: &str) -> Result<Pool, Error
 }
 
 // TODO: return error response where appropriate
-fn query(
+async fn query(
     state: web::Data<AppState>,
     params: web::Query<Params>,
-) -> impl Future<Output = Result<HttpResponse, HandlerError>> {
-    let fut = async move {
-        let conn = state.pool.get().await?;
-        let last_updated = {
-            let rows = conn.query("SELECT last_updated FROM metadata", &[]).await?;
+) -> Result<HttpResponse, HandlerError> {
+    let conn = state.pool.get().await?;
+    let last_updated = {
+        let rows = conn.query("SELECT last_updated FROM metadata", &[]).await?;
 
-            match rows.first() {
-                Some(row) => row.get::<_, DateTime<Utc>>(0).to_rfc3339(),
-                None => {
-                    return Ok(HttpResponse::ServiceUnavailable().finish());
-                }
-            }
-        };
-
-        let mut q1 = String::from(indoc!(
-            "
-            BEGIN;
-            CREATE TEMP TABLE tmp
-                ON COMMIT DROP
-            AS
-            "
-        ));
-        q1.push_str(&params.query);
-
-        if let Err(e) = conn.batch_execute(&q1).await {
-            conn.batch_execute("COMMIT").await?;
-
-            return Ok(HttpResponse::Ok().json(Response::Error(format!("{}", e))));
+        if let Some(row) = rows.first() {
+            row.get::<_, DateTime<Utc>>(0).to_rfc3339()
+        } else {
+            return Ok(HttpResponse::ServiceUnavailable().finish());
         }
-
-        let q2 = indoc!(
-            "
-            SELECT attname
-            FROM pg_attribute
-            WHERE attrelid = 'tmp'::regclass
-              AND attnum > 0
-              AND NOT attisdropped
-            ORDER BY attnum
-            "
-        );
-
-        let column_names = match conn.simple_query(q2).await {
-            Ok(resp) => read_column_names(&resp)?,
-            Err(e) => {
-                return Ok(HttpResponse::Ok().json(Response::Error(format!("{}", e))));
-            }
-        };
-
-        let q3 = indoc!(
-            "
-            SELECT * FROM tmp;
-            COMMIT;
-            "
-        );
-
-        let rows = match conn.simple_query(q3).await {
-            Ok(resp) => read_rows(&resp),
-            Err(e) => {
-                return Ok(HttpResponse::Ok().json(Response::Error(format!("{}", e))));
-            }
-        };
-
-        Ok(HttpResponse::Ok().json(Response::Success {
-            last_updated,
-            column_names,
-            rows,
-        }))
     };
 
-    fut.boxed()
+    let resp = match conn.simple_query(&params.query).await {
+        Ok(resp) => resp,
+        Err(e) => {
+            return Ok(HttpResponse::Ok().json(Response::Error(format!("{}", e))));
+        }
+    };
+
+    let mut column_names = Vec::new();
+    if let Some(SimpleQueryMessage::RowDescription(cols)) = resp.first() {
+        column_names = cols.iter().map(|col| col.name().to_string()).collect();
+    };
+
+    let rows = read_rows(&resp);
+
+    Ok(HttpResponse::Ok().json(Response::Success {
+        last_updated,
+        column_names,
+        rows,
+    }))
 }
 
 fn read_rows(query_response: &[SimpleQueryMessage]) -> Vec<Vec<String>> {
-    first_query_rows(query_response)
-        .map(row_to_strings)
-        .collect()
-}
-
-fn read_column_names(query_response: &[SimpleQueryMessage]) -> Result<Vec<String>, Error> {
-    first_query_rows(query_response)
-        .map(|row: &SimpleQueryRow| match row.try_get(0) {
-            Ok(Some(value)) => Ok(value.to_string()),
-            Ok(None) => Err(format_err!("Column query response is invalid")),
-            Err(e) => Err(Error::from(e).context("Column query response is invalid")),
-        })
-        .collect()
-}
-
-fn first_query_rows(
-    query_response: &[SimpleQueryMessage],
-) -> impl Iterator<Item = &SimpleQueryRow> {
     query_response
         .iter()
-        .map(|msg| {
+        .filter_map(|msg| {
             if let SimpleQueryMessage::Row(row) = msg {
-                Some(row)
+                Some(row_to_strings(row))
             } else {
                 None
             }
         })
-        .while_some()
+        .collect()
 }
 
 fn row_to_strings(row: &SimpleQueryRow) -> Vec<String> {
